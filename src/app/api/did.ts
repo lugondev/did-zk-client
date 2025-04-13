@@ -1,5 +1,9 @@
 import { buildApiUrl } from '@/lib/config'
 
+export interface DID {
+	ID: string;
+}
+
 type AuthenticateResult = {
 	proof: string;
 	signature: string;
@@ -83,5 +87,58 @@ export async function pollQRAuthentication(challenge: string): Promise<{ authent
 		};
 	} catch (error) {
 		throw new Error('Failed to check QR authentication status');
+	}
+}
+
+export async function createDID(formData: { name: string; dob: string }) {
+	try {
+		const response = await fetch(buildApiUrl('/did/create'), {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify(formData),
+		});
+
+		if (!response.ok) {
+			const errorData = await response.json().catch(() => ({}));
+			throw new Error(errorData.message || 'Failed to create DID');
+		}
+
+		return await response.json();
+	} catch (error) {
+		if (error instanceof Error) {
+			throw error;
+		}
+		throw new Error('Failed to create DID');
+	}
+}
+
+export async function verifyDID(
+	didId: string,
+	signature: string,
+	proof: string
+): Promise<boolean> {
+	try {
+		const response = await fetch(buildApiUrl('/did/verify'), {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				did_id: didId,
+				signature,
+				proof,
+			}),
+		});
+
+		if (!response.ok) {
+			throw new Error('Verification failed');
+		}
+
+		const result = await response.json();
+		return result.verified;
+	} catch (error) {
+		throw new Error('Failed to verify DID');
 	}
 }
