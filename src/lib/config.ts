@@ -11,7 +11,7 @@ interface Config {
 }
 
 const config: Config = {
-	apiUrl: (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080') + '/api',
+	apiUrl: (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8088') + '/api',
 	auth: {
 		cookieName: process.env.NEXT_PUBLIC_AUTH_COOKIE_NAME || 'auth_token',
 		cookieMaxAge: parseInt(process.env.NEXT_PUBLIC_AUTH_COOKIE_MAX_AGE || '86400', 10),

@@ -3,9 +3,11 @@
 import {useState, useEffect} from 'react'
 import {useRouter, useSearchParams} from 'next/navigation'
 import Link from 'next/link'
+import {QRCodeSVG} from 'qrcode.react'
 import {login, loginWithDID, LoginData, DIDLoginData} from '@/lib/auth'
 import {wasmAuth} from '@/lib/wasm-auth'
 import {authenticateDID, generateQRChallenge, pollQRAuthentication} from '@/app/api/did'
+import {generateRandomData} from '@/lib/qr-code-utils'
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card'
 import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs'
 import {Button} from '@/components/ui/button'
@@ -37,6 +39,7 @@ export default function LoginForm() {
 	const [loading, setLoading] = useState(false)
 	const [didStep, setDidStep] = useState<'input' | 'authenticate' | 'verify'>('input')
 	const [qrData, setQRData] = useState<{challenge: string; qrCode: string} | null>(null)
+	const [qrCodeData, setQRCodeData] = useState<string>('')
 
 	useEffect(() => {
 		const errorMsg = searchParams.get('error')
@@ -48,12 +51,18 @@ export default function LoginForm() {
 	const setupQRAuthentication = async () => {
 		try {
 			setLoading(true)
-			const {challenge, qrData} = await generateQRChallenge()
+			// Generate random data for the QR code
+			const randomData = generateRandomData(64)
+			setQRCodeData(randomData)
+
+			// For demonstration purposes, we'll use the random data as both challenge and display data
 			setQRData({
-				challenge,
-				qrCode: qrData,
+				challenge: randomData,
+				qrCode: randomData,
 			})
-			startPolling(challenge)
+
+			// In a real implementation, you would start polling here
+			// startPolling(randomData)
 		} catch (err) {
 			setError('Failed to generate QR code')
 		} finally {
@@ -161,6 +170,7 @@ export default function LoginForm() {
 	useEffect(() => {
 		if (loginMethod !== 'qr') {
 			setQRData(null)
+			setQRCodeData('')
 		}
 	}, [loginMethod])
 
@@ -300,11 +310,11 @@ export default function LoginForm() {
 
 						<TabsContent value='qr'>
 							<div className='mt-4 flex flex-col items-center space-y-4'>
-								<div className='w-48 h-48 bg-muted rounded-lg flex items-center justify-center'>
+								<div className='w-48 h-48 bg-muted rounded-lg flex items-center justify-center p-4'>
 									{loading ? (
 										<div className='animate-pulse bg-muted w-full h-full rounded-lg' />
-									) : qrData ? (
-										<img src={qrData.qrCode} alt='DID QR Code' className='w-full h-full' />
+									) : qrCodeData ? (
+										<QRCodeSVG value={qrCodeData} size={180} level='M' includeMargin={true} />
 									) : (
 										<Button variant='outline' onClick={setupQRAuthentication}>
 											<QrCode className='w-6 h-6 mr-2' />
@@ -316,19 +326,23 @@ export default function LoginForm() {
 								<div className='text-center space-y-2'>
 									<div className='flex items-center justify-center space-x-2'>
 										<div className='w-2 h-2 rounded-full bg-primary animate-pulse' />
-										<span className='text-sm text-muted-foreground'>{qrData ? 'Waiting for mobile wallet...' : 'Click to generate QR code'}</span>
+										<span className='text-sm text-muted-foreground'>{qrCodeData ? 'Scan with mobile wallet...' : 'Click to generate QR code'}</span>
 									</div>
 
-									{qrData && (
-										<Button
-											variant='ghost'
-											size='sm'
-											onClick={() => {
-												setQRData(null)
-												setupQRAuthentication()
-											}}>
-											Generate new QR code
-										</Button>
+									{qrCodeData && (
+										<div className='space-y-2'>
+											<div className='text-xs text-muted-foreground max-w-xs break-all'>Data: {qrCodeData.substring(0, 32)}...</div>
+											<Button
+												variant='ghost'
+												size='sm'
+												onClick={() => {
+													setQRData(null)
+													setQRCodeData('')
+													setupQRAuthentication()
+												}}>
+												Generate new QR code
+											</Button>
+										</div>
 									)}
 								</div>
 							</div>

@@ -66,6 +66,12 @@ export async function generateQRChallenge(): Promise<{ challenge: string; qrData
 	try {
 		const response = await fetch(buildApiUrl('/did/qr-challenge'), {
 			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				didId: 'did:example:123123123',
+			}),
 		});
 
 		if (!response.ok) {
