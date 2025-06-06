@@ -4,6 +4,7 @@ import {useState, useEffect} from 'react'
 import {useRouter, useSearchParams} from 'next/navigation'
 import Link from 'next/link'
 import {login, loginWithDID, LoginData, DIDLoginData} from '@/lib/auth'
+import {wasmAuth} from '@/lib/wasm-auth'
 import {authenticateDID, generateQRChallenge, pollQRAuthentication} from '@/app/api/did'
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card'
 import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs'
@@ -137,7 +138,12 @@ export default function LoginForm() {
 		setLoading(true)
 
 		try {
-			const authResult = await authenticateDID(didFormData.didId, didFormData.privateKey, didFormData.challenge)
+			// Use enhanced WASM authentication with client-side verification
+			const authResult = await wasmAuth.authenticateDIDClientSide(didFormData.didId, didFormData.privateKey, didFormData.challenge)
+
+			if (!authResult.verified) {
+				throw new Error('Client-side DID verification failed')
+			}
 
 			setDidAuthData({
 				proof: authResult.proof,
@@ -205,9 +211,29 @@ export default function LoginForm() {
 									<Label htmlFor='password'>Password</Label>
 									<Input id='password' name='password' type='password' required value={formData.password} onChange={handleChange} />
 								</div>
-								<Button type='submit' className='w-full' disabled={loading}>
-									{loading ? 'Signing in...' : 'Sign in'}
-								</Button>
+								<div className='flex space-x-2'>
+									<Button type='submit' className='flex-1' disabled={loading}>
+										{loading ? 'Signing in...' : 'Sign in'}
+									</Button>
+									<Button
+										type='button'
+										variant='outline'
+										onClick={async () => {
+											setError(null)
+											setLoading(true)
+											try {
+												await wasmAuth.loginWithClientSideCrypto(formData.username, formData.password)
+												router.push('/dashboard/profile')
+											} catch (err) {
+												setError(err instanceof Error ? err.message : 'WASM login failed')
+											} finally {
+												setLoading(false)
+											}
+										}}
+										disabled={loading}>
+										WASM
+									</Button>
+								</div>
 							</form>
 						</TabsContent>
 
