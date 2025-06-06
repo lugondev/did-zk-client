@@ -172,11 +172,24 @@ export class WASMAuth {
 		organizationIdHash: string;
 	}> {
 		try {
+			console.log('Creating membership proof client-side...', { organizationId, balance, balanceRangeMin, balanceRangeMax });
+
 			// Generate salt for the proof
 			const saltBytes = await cryptoWasm.generateChallenge(32);
 			const salt = cryptoWasm.uint8ArrayToHex(saltBytes);
+			console.log('Generated salt:', salt);
+
+			// Ensure DID WASM module is loaded
+			await wasmLoader.loadDID();
+			console.log('DID WASM module loaded');
+
+			// Check if function is available
+			if (!wasmLoader.isUsingWebWorker && typeof window.createMembershipAndBalanceProof !== 'function') {
+				throw new Error('createMembershipAndBalanceProof function not available on window object');
+			}
 
 			// Create the membership and balance proof
+			console.log('Calling createMembershipAndBalanceProof...');
 			const proofResult = await wasmLoader.createMembershipAndBalanceProof(
 				organizationId,
 				balance,
@@ -184,6 +197,7 @@ export class WASMAuth {
 				balanceRangeMax,
 				salt
 			);
+			console.log('Proof result:', proofResult);
 
 			// Create commitment and organization hash
 			const orgIdBytes = cryptoWasm.stringToUint8Array(organizationId);
